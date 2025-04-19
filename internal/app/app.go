@@ -6,11 +6,22 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/jj-mon/testgen/internal/config"
 	"github.com/jj-mon/testgen/internal/generator"
 	"github.com/jj-mon/testgen/internal/goparser"
 )
 
-func GenerateTestsForFile(path string) error {
+type App struct {
+	cfg *config.Config
+}
+
+func New(cfg *config.Config) *App {
+	return &App{
+		cfg: cfg,
+	}
+}
+
+func (a *App) GenerateTestsForFile(path string) error {
 	fileName := filepath.Base(path)
 	dirPath := filepath.Dir(path)
 
@@ -26,7 +37,7 @@ func GenerateTestsForFile(path string) error {
 		return fmt.Errorf("failed create file: %v", err)
 	}
 
-	fileBody, err := generateTestsForFile(path)
+	fileBody, err := a.generateTestsForFile(path)
 	if err != nil {
 		return fmt.Errorf("failed generate tests: %v", err)
 	}
@@ -39,7 +50,7 @@ func GenerateTestsForFile(path string) error {
 	return nil
 }
 
-func generateTestsForFile(path string) (string, error) {
+func (a *App) generateTestsForFile(path string) (string, error) {
 	fileModel, err := goparser.ParseGoFile(path)
 	if err != nil {
 		return "", err
@@ -55,12 +66,12 @@ func generateTestsForFile(path string) (string, error) {
 
 	for _, fn := range fns {
 		file += "\n"
-		file += generator.GenerateTestForFunction(fn)
+		file += generator.GenerateTestForFunction(fn, a.cfg.Conditions)
 	}
 
 	for _, mtd := range mtds {
 		file += "\n"
-		file += generator.GenerateTestForMethod(mtd)
+		file += generator.GenerateTestForMethod(mtd, a.cfg.Conditions)
 	}
 
 	return file, nil

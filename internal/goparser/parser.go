@@ -17,21 +17,21 @@ import (
 
 func ParseGoFile(path string) (model.File, error) {
 	var packageName string
-
+	// Read go file
 	src, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fset := token.NewFileSet()
-
+	// parse entire package that contains go file
 	pkgs, err := parser.ParseDir(fset, filepath.Dir(path), func(fi fs.FileInfo) bool {
 		return !fi.IsDir() && !strings.HasSuffix(fi.Name(), "_test.go")
 	}, parser.AllErrors)
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	// collect all exported user structures in a package
 	structs := make(map[string]model.Struct)
 	for _, pkg := range pkgs {
 		structs = collectStructs(pkg, fset)
@@ -45,7 +45,7 @@ func ParseGoFile(path string) (model.File, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	// собираем все экспортируемые функции и методы в исходном файле
 	fns, mtds := collectFuncsAndMethods(node, structs, fset2)
 
 	return model.File{
@@ -60,22 +60,27 @@ func collectFuncsAndMethods(node *ast.File, structs map[string]model.Struct, fse
 		fns  []model.Func
 		mtds []model.Method
 	)
-
+	// проходимся по всем декларациям в файле
 	for _, decl := range node.Decls {
+		// если очередная это декларация функции
 		if fn, ok := decl.(*ast.FuncDecl); ok {
 			if !fn.Name.IsExported() {
 				continue
 			}
 
 			fnName := fn.Name.Name
-
+			// собираем аргументы функции
 			args := collectFuncParams(fn, fset)
+			// собираем количество ветвений в функции (if, case)
 			branchCount := countFuncBranchStmt(fn)
+			// количество возвращаемых значений
 			lenResults := lenFuncResults(fn)
 
 			if fn.Recv != nil {
+				// если есть получатель, то это Метод какой то структуры
 				var recvName string
 				for _, recv := range fn.Recv.List {
+					// находим имя структуры
 					switch expr := recv.Type.(type) {
 					case *ast.Ident:
 						recvName = expr.Name
@@ -85,7 +90,7 @@ func collectFuncsAndMethods(node *ast.File, structs map[string]model.Struct, fse
 						}
 					}
 				}
-
+				// ищем ранее сохраненную структуру
 				if s, ok := structs[recvName]; ok {
 					mtds = append(mtds, model.Method{
 						Func: model.Func{

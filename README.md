@@ -30,5 +30,6 @@ Make sure you have Go installed on your system and your `$GOPATH/bin` is in your
 To generate tests for a Go file, use the following command:
 
 ```
-testgen <path-to-your-go-file>
+testgen -c X <path-to-your-go-file>
+    -c: number of conditions for creating table-driven tests (default 3)
 ```
