@@ -1,7 +1,7 @@
 package generator
 
 import (
-	"testgen/internal/model"
+	"github.com/jj-mon/testgen/internal/model"
 )
 
 func GenerateTestForFunction(fn model.Func) string {

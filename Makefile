@@ -1,2 +1,2 @@
 build:
-	go build -o bin/testgen ./cmd/testgen
+	go build -o bin/testgen 

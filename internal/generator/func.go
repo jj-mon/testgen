@@ -2,7 +2,7 @@ package generator
 
 import (
 	"fmt"
-	"testgen/internal/model"
+	"github.com/jj-mon/testgen/internal/model"
 )
 
 func generateSimpleTestForFunc(fn model.Func) string {

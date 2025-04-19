@@ -3,7 +3,8 @@ package main
 import (
 	"log"
 	"os"
-	"testgen/internal/app"
+
+	"github.com/jj-mon/testgen/internal/app"
 )
 
 func main() {

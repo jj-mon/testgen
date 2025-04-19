@@ -11,7 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"testgen/internal/model"
+
+	"github.com/jj-mon/testgen/internal/model"
 )
 
 func ParseGoFile(path string) ([]model.Func, []model.Method, string) {

@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"testgen/internal/generator"
-	"testgen/internal/goparser"
+	"github.com/jj-mon/testgen/internal/generator"
+	"github.com/jj-mon/testgen/internal/goparser"
 )
 
 func GenerateTestForFile(path string) {

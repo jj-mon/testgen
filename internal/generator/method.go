@@ -3,7 +3,8 @@ package generator
 import (
 	"fmt"
 	"strings"
-	"testgen/internal/model"
+
+	"github.com/jj-mon/testgen/internal/model"
 )
 
 func generateSimpleTestForMethod(method model.Method) string {
