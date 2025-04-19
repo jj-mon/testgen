@@ -15,7 +15,5 @@ func main() {
 
 	filePath := os.Args[1]
 
-	println(filePath)
-
 	app.GenerateTestForFile(filePath)
 }
