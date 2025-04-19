@@ -15,5 +15,7 @@ func main() {
 
 	filePath := os.Args[1]
 
-	app.GenerateTestForFile(filePath)
+	if err := app.GenerateTestsForFile(filePath); err != nil {
+		log.Printf("Failed: %v", err)
+	}
 }

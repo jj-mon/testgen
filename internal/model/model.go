@@ -4,18 +4,17 @@ type Func struct {
 	Name            string
 	Args            []Arg
 	BranchStmtCount int
+	LenResults      int
 }
 
 type Arg struct {
-	Name     string
-	TypeName string
+	Name string
+	Type string
 }
 
 type Method struct {
-	Name            string
-	Struct          Struct
-	Args            []Arg
-	BranchStmtCount int
+	Func
+	Struct Struct
 }
 
 type Struct struct {
@@ -24,6 +23,12 @@ type Struct struct {
 }
 
 type IField struct {
-	Name     string
-	TypeName string
+	Name string
+	Type string
+}
+
+type File struct {
+	PackageName string
+	Fns         []Func
+	Mtds        []Method
 }

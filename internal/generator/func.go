@@ -2,6 +2,7 @@ package generator
 
 import (
 	"fmt"
+
 	"github.com/jj-mon/testgen/internal/model"
 )
 
@@ -10,17 +11,28 @@ func generateSimpleTestForFunc(fn model.Func) string {
 
 	code := fmt.Sprintf("func %s(t *testing.T) {\n", testFuncName)
 
-	code += "\tvar (\n"
-	for _, arg := range fn.Args {
-		code += fmt.Sprintf("\t\ttest%s %s\n", arg.Name, arg.TypeName)
+	if len(fn.Args) > 0 {
+		code += "\tvar (\n"
+		for _, arg := range fn.Args {
+			code += fmt.Sprintf("\t\ttest%s %s\n", arg.Name, arg.Type)
+		}
+		code += "\t)\n\n"
 	}
-	code += "\t)\n\n"
 
-	code += fmt.Sprintf("\t%s(\n", fn.Name)
-	for _, arg := range fn.Args {
-		code += fmt.Sprintf("\t\ttest%s,\n", arg.Name)
+	// Run testing function
+	code += "\t"
+	for i := range fn.LenResults {
+		if i < fn.LenResults-1 {
+			code += "_, "
+		} else {
+			code += "_ = "
+		}
 	}
-	code += "\t)\n"
+	code += fmt.Sprintf("%s(", fn.Name)
+	for _, arg := range fn.Args {
+		code += fmt.Sprintf("test%s, ", arg.Name)
+	}
+	code += ")\n"
 
 	code += "}\n"
 
@@ -35,7 +47,7 @@ func generateTableTestForFunc(fn model.Func) string {
 	code += "\ttests := []struct {\n"
 	code += "\t\tname\tstring\n"
 	for _, arg := range fn.Args {
-		code += fmt.Sprintf("\t\t%s\t%s\n", arg.Name, arg.TypeName)
+		code += fmt.Sprintf("\t\t%s\t%s\n", arg.Name, arg.Type)
 	}
 	code += "\t}{}\n"
 	code += "\tfor _, tt := range tests {\n"
@@ -43,11 +55,20 @@ func generateTableTestForFunc(fn model.Func) string {
 
 	code += "\n"
 
-	code += fmt.Sprintf("\t\t\t%s(\n", fn.Name)
-	for _, arg := range fn.Args {
-		code += fmt.Sprintf("\t\t\t\ttt.%s,\n", arg.Name)
+	// Run testing function
+	code += "\t\t\t"
+	for i := range fn.LenResults {
+		if i < fn.LenResults-1 {
+			code += "_, "
+		} else {
+			code += "_ = "
+		}
 	}
-	code += "\t\t\t)\n"
+	code += fmt.Sprintf("%s(", fn.Name)
+	for _, arg := range fn.Args {
+		code += fmt.Sprintf("tt.%s, ", arg.Name)
+	}
+	code += ")\n"
 
 	code += "\t\t})\n"
 

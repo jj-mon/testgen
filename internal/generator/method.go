@@ -9,100 +9,122 @@ import (
 
 func generateSimpleTestForMethod(method model.Method) string {
 	s := method.Struct
-
 	testFuncName := fmt.Sprintf("Test%s_%s", s.Name, method.Name)
 
-	code := fmt.Sprintf("func %s(t *testing.T) {\n", testFuncName)
-
-	code += "\tctrl := gomock.NewController(t)\n\n"
-
-	for _, iField := range s.IFields {
-		code += fmt.Sprintf("\tmock%s := NewMock%s(ctrl)\n", iField.Name, iField.TypeName)
+	var code strings.Builder
+	code.WriteString(fmt.Sprintf("func %s(t *testing.T) {\n", testFuncName))
+	if len(s.IFields) > 0 {
+		code.WriteString("\tctrl := gomock.NewController(t)\n\n")
+		for _, iField := range s.IFields {
+			code.WriteString(fmt.Sprintf("\tmock%s := NewMock%s(ctrl)\n", iField.Name, iField.Type))
+		}
+		code.WriteString("\n")
 	}
-	code += "\n"
 
 	structVarName := strings.ToLower(string(s.Name[0]))
 
-	code += fmt.Sprintf("\t%s := &%s{\n", structVarName, s.Name)
+	code.WriteString(fmt.Sprintf("\t%s := &%s{\n", structVarName, s.Name))
 	for _, iField := range s.IFields {
-		code += fmt.Sprintf("\t\t%s: mock%s,\n", iField.Name, iField.TypeName)
+		code.WriteString(fmt.Sprintf("\t\t%s: mock%s,\n", iField.Name, iField.Name))
 	}
-	code += "\t}\n\n"
+	code.WriteString("\t}\n\n")
 
-	code += "\tvar (\n"
+	if len(method.Args) > 0 {
+		code.WriteString("\tvar (\n")
+		for _, arg := range method.Args {
+			code.WriteString(fmt.Sprintf("\t\ttest%s %s\n", arg.Name, arg.Type))
+		}
+		code.WriteString("\t)\n\n")
+	}
+
+	// Run testing function
+	code.WriteString("\t")
+	for i := range method.LenResults {
+		if i < method.LenResults-1 {
+			code.WriteString("_, ")
+		} else {
+			code.WriteString("_ = ")
+		}
+	}
+	code.WriteString(fmt.Sprintf("%s.%s(", structVarName, method.Name))
 	for _, arg := range method.Args {
-		code += fmt.Sprintf("\t\ttest%s %s\n", arg.Name, arg.TypeName)
+		code.WriteString(fmt.Sprintf("test%s, ", arg.Name))
 	}
-	code += "\t)\n\n"
+	code.WriteString(")\n")
 
-	code += fmt.Sprintf("\t%s.%s(\n", structVarName, method.Name)
-	for _, arg := range method.Args {
-		code += fmt.Sprintf("\t\ttest%s,\n", arg.Name)
-	}
-	code += "\t)\n"
+	code.WriteString("}\n")
 
-	code += "}\n"
-
-	return code
+	return code.String()
 }
 
 func generateTableTestForMethod(method model.Method) string {
 	s := method.Struct
-
 	testFuncName := fmt.Sprintf("Test%s_%s", s.Name, method.Name)
 
-	code := fmt.Sprintf("func %s(t *testing.T) {\n", testFuncName)
+	var code strings.Builder
+	code.WriteString(fmt.Sprintf("func %s(t *testing.T) {\n", testFuncName))
 
-	code += "\ttests := []struct {\n"
-	code += "\t\tname\tstring\n"
+	code.WriteString("\ttests := []struct {\n")
+	code.WriteString("\t\tname\tstring\n")
 	for _, arg := range method.Args {
-		code += fmt.Sprintf("\t\t%s\t%s\n", arg.Name, arg.TypeName)
+		code.WriteString(fmt.Sprintf("\t\t%s\t%s\n", arg.Name, arg.Type))
 	}
 
 	if len(s.IFields) > 0 {
-		code += "\t\tsetupMock\tfunc(t *testing.T, ctrl *gomock.Controller, "
+		code.WriteString("\t\tsetupMock\tfunc(t *testing.T, ctrl *gomock.Controller, ")
 		for _, iField := range s.IFields {
-			code += fmt.Sprintf("%s *Mock%s, ", iField.Name, iField.TypeName)
+			code.WriteString(fmt.Sprintf("%s *Mock%s, ", iField.Name, iField.Type))
 		}
-		code += ")\n"
+		code.WriteString(")\n")
 	}
-	code += "\t}{}\n"
-	code += "\tfor _, tt := range tests {\n"
-	code += "\t\tt.Run(tt.name, func(t *testing.T) {\n"
-	code += "\t\t\tctrl := gomock.NewController(t)\n"
-
-	for _, iField := range s.IFields {
-		code += fmt.Sprintf("\t\t\tmock%s := NewMock%s(ctrl)\n", iField.Name, iField.TypeName)
-	}
-	code += "\n"
-
+	code.WriteString("\t}{}\n")
+	code.WriteString("\tfor _, tt := range tests {\n")
+	code.WriteString("\t\tt.Run(tt.name, func(t *testing.T) {\n")
 	if len(s.IFields) > 0 {
-		code += "\t\t\ttt.setupMock(t, ctrl, "
+		code.WriteString("\t\t\tctrl := gomock.NewController(t)\n")
+
+		code.WriteString("\n")
+
 		for _, iField := range s.IFields {
-			code += fmt.Sprintf("mock%s, ", iField.Name)
+			code.WriteString(fmt.Sprintf("\t\t\tmock%s := NewMock%s(ctrl)\n", iField.Name, iField.Type))
 		}
-		code += ")\n\n"
+		code.WriteString("\n")
+
+		code.WriteString("\t\t\ttt.setupMock(t, ctrl, ")
+		for _, iField := range s.IFields {
+			code.WriteString(fmt.Sprintf("mock%s, ", iField.Name))
+		}
+		code.WriteString(")\n\n")
 	}
 
 	structVarName := strings.ToLower(string(s.Name[0]))
 
-	code += fmt.Sprintf("\t\t\t%s := &%s{\n", structVarName, s.Name)
+	code.WriteString(fmt.Sprintf("\t\t\t%s := &%s{\n", structVarName, s.Name))
 	for _, iField := range s.IFields {
-		code += fmt.Sprintf("\t\t\t\t%s: mock%s,\n", iField.Name, iField.TypeName)
+		code.WriteString(fmt.Sprintf("\t\t\t\t%s: mock%s,\n", iField.Name, iField.Name))
 	}
-	code += "\t\t\t}\n\n"
+	code.WriteString("\t\t\t}\n\n")
 
-	code += fmt.Sprintf("\t\t\t%s.%s(\n", structVarName, method.Name)
+	// Run testing function
+	code.WriteString("\t\t\t")
+	for i := range method.LenResults {
+		if i < method.LenResults-1 {
+			code.WriteString("_, ")
+		} else {
+			code.WriteString("_ = ")
+		}
+	}
+	code.WriteString(fmt.Sprintf("%s.%s(", structVarName, method.Name))
 	for _, arg := range method.Args {
-		code += fmt.Sprintf("\t\t\t\ttt.%s,\n", arg.Name)
+		code.WriteString(fmt.Sprintf("tt.%s, ", arg.Name))
 	}
-	code += "\t\t\t)\n"
+	code.WriteString(")\n")
 
-	code += "\t\t})\n"
+	code.WriteString("\t\t})\n")
 
-	code += "\t}\n"
+	code.WriteString("\t}\n")
 
-	code += "}\n"
+	code.WriteString("}\n")
 
-	return code
+	return code.String()
 }

@@ -4,9 +4,11 @@ import (
 	"github.com/jj-mon/testgen/internal/model"
 )
 
+const countForTable = 3
+
 func GenerateTestForFunction(fn model.Func) string {
 	branchCount := fn.BranchStmtCount
-	if branchCount < 2 {
+	if branchCount < countForTable {
 		return generateSimpleTestForFunc(fn)
 	}
 
@@ -15,7 +17,7 @@ func GenerateTestForFunction(fn model.Func) string {
 
 func GenerateTestForMethod(method model.Method) string {
 	branchCount := method.BranchStmtCount
-	if branchCount < 2 {
+	if branchCount < countForTable {
 		return generateSimpleTestForMethod(method)
 	}
 

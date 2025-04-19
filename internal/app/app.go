@@ -5,35 +5,47 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
 	"github.com/jj-mon/testgen/internal/generator"
 	"github.com/jj-mon/testgen/internal/goparser"
 )
 
-func GenerateTestForFile(path string) {
+func GenerateTestsForFile(path string) error {
 	fileName := filepath.Base(path)
 	dirPath := filepath.Dir(path)
 
-	fileName, ok := strings.CutSuffix(fileName, ".go")
+	suffix := ".go"
+	fileName, ok := strings.CutSuffix(fileName, suffix)
 	if !ok {
-		return
+		return fmt.Errorf("failed cat suffix '%s' in '%s'", fileName, suffix)
 	}
 
 	testFileName := fmt.Sprintf("%s_test.go", fileName)
 	file, err := os.Create(filepath.Join(dirPath, testFileName))
 	if err != nil {
-		return
+		return fmt.Errorf("failed create file: %v", err)
 	}
 
-	fileBody := generateTestForFile(path)
+	fileBody, err := generateTestsForFile(path)
+	if err != nil {
+		return fmt.Errorf("failed generate tests: %v", err)
+	}
 
 	_, err = file.WriteString(fileBody)
 	if err != nil {
-		return
+		return fmt.Errorf("failed write file: %v", err)
 	}
+
+	return nil
 }
 
-func generateTestForFile(path string) string {
-	fns, mtds, packageName := goparser.ParseGoFile(path)
+func generateTestsForFile(path string) (string, error) {
+	fileModel, err := goparser.ParseGoFile(path)
+	if err != nil {
+		return "", err
+	}
+
+	fns, mtds, packageName := fileModel.Fns, fileModel.Mtds, fileModel.PackageName
 
 	file := fmt.Sprintf("package %s\n", packageName)
 	file += "\n"
@@ -51,5 +63,5 @@ func generateTestForFile(path string) string {
 		file += generator.GenerateTestForMethod(mtd)
 	}
 
-	return file
+	return file, nil
 }

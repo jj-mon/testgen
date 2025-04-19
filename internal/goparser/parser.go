@@ -15,7 +15,7 @@ import (
 	"github.com/jj-mon/testgen/internal/model"
 )
 
-func ParseGoFile(path string) ([]model.Func, []model.Method, string) {
+func ParseGoFile(path string) (model.File, error) {
 	var packageName string
 
 	src, err := os.ReadFile(path)
@@ -48,7 +48,11 @@ func ParseGoFile(path string) ([]model.Func, []model.Method, string) {
 
 	fns, mtds := collectFuncsAndMethods(node, structs, fset2)
 
-	return fns, mtds, packageName
+	return model.File{
+		Fns:         fns,
+		Mtds:        mtds,
+		PackageName: packageName,
+	}, nil
 }
 
 func collectFuncsAndMethods(node *ast.File, structs map[string]model.Struct, fset *token.FileSet) ([]model.Func, []model.Method) {
@@ -67,6 +71,7 @@ func collectFuncsAndMethods(node *ast.File, structs map[string]model.Struct, fse
 
 			args := collectFuncParams(fn, fset)
 			branchCount := countFuncBranchStmt(fn)
+			lenResults := lenFuncResults(fn)
 
 			if fn.Recv != nil {
 				var recvName string
@@ -83,10 +88,13 @@ func collectFuncsAndMethods(node *ast.File, structs map[string]model.Struct, fse
 
 				if s, ok := structs[recvName]; ok {
 					mtds = append(mtds, model.Method{
-						Name:            fnName,
-						Struct:          s,
-						Args:            args,
-						BranchStmtCount: branchCount,
+						Func: model.Func{
+							Name:            fnName,
+							Args:            args,
+							BranchStmtCount: branchCount,
+							LenResults:      lenResults,
+						},
+						Struct: s,
 					})
 				}
 			} else {
@@ -94,6 +102,7 @@ func collectFuncsAndMethods(node *ast.File, structs map[string]model.Struct, fse
 					Name:            fnName,
 					Args:            args,
 					BranchStmtCount: branchCount,
+					LenResults:      lenResults,
 				})
 			}
 		}
@@ -110,8 +119,8 @@ func collectFuncParams(fn *ast.FuncDecl, fset *token.FileSet) []model.Arg {
 			argName := name.Name
 			typeArgName := exprToString(param.Type, fset)
 			args = append(args, model.Arg{
-				Name:     argName,
-				TypeName: typeArgName,
+				Name: argName,
+				Type: typeArgName,
 			})
 		}
 	}
@@ -123,15 +132,29 @@ func countFuncBranchStmt(fn *ast.FuncDecl) int {
 	branchCount := 0
 	if fn.Body != nil {
 		ast.Inspect(fn.Body, func(n ast.Node) bool {
-			switch n.(type) {
-			case *ast.IfStmt, *ast.SwitchStmt:
+			switch stmt := n.(type) {
+			case *ast.IfStmt:
 				branchCount++
+			case *ast.SwitchStmt:
+				for _, s := range stmt.Body.List {
+					if _, ok := s.(*ast.CaseClause); ok {
+						branchCount++
+					}
+				}
 			}
 			return true
 		})
 	}
 
 	return branchCount
+}
+
+func lenFuncResults(fn *ast.FuncDecl) int {
+	if fn.Type.Results != nil {
+		return len(fn.Type.Results.List)
+	}
+
+	return 0
 }
 
 func collectStructs(pkg *ast.Package, fset *token.FileSet) map[string]model.Struct {
@@ -169,8 +192,8 @@ func collectStructs(pkg *ast.Package, fset *token.FileSet) map[string]model.Stru
 							continue
 						}
 						s.IFields = append(s.IFields, model.IField{
-							Name:     name.Name,
-							TypeName: typeName,
+							Name: name.Name,
+							Type: typeName,
 						})
 					}
 				}
