@@ -1,130 +1,89 @@
 package generator
 
 import (
-	"fmt"
+	"bytes"
+	"log"
 	"strings"
+	"text/template"
 
 	"github.com/jj-mon/testgen/internal/model"
+	"github.com/jj-mon/testgen/internal/tmpl"
 )
 
 func generateSimpleTestForMethod(method model.Method) string {
+	tmplStr := tmpl.TmplSimpleTestForMethod
+
+	t, err := template.New("TmplSimpleTestForMethod").Funcs(template.FuncMap{
+		tmpl.FuncName: tmpl.Sub1,
+	}).Parse(tmplStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	s := method.Struct
-	testFuncName := fmt.Sprintf("Test%s_%s", s.Name, method.Name)
+	structVar := strings.ToLower(string(s.Name[0]))
 
-	var code strings.Builder
-	code.WriteString(fmt.Sprintf("func %s(t *testing.T) {\n", testFuncName))
-	if len(s.IFields) > 0 {
-		code.WriteString("\tctrl := gomock.NewController(t)\n\n")
-		for _, iField := range s.IFields {
-			code.WriteString(fmt.Sprintf("\tmock%s := NewMock%s(ctrl)\n", iField.Name, iField.Type))
-		}
-		code.WriteString("\n")
+	data := tmpl.DataForMethod{
+		StructName:   s.Name,
+		MethodName:   method.Name,
+		StructVar:    structVar,
+		ArgsCount:    len(method.Args),
+		ResultsCount: method.LenResults,
+		HasMocks:     len(s.IFields) > 0,
+		HasResults:   method.LenResults > 0,
 	}
 
-	structVarName := strings.ToLower(string(s.Name[0]))
+	data.Mocks = append(data.Mocks, s.IFields...)
 
-	code.WriteString(fmt.Sprintf("\t%s := &%s{\n", structVarName, s.Name))
-	for _, iField := range s.IFields {
-		code.WriteString(fmt.Sprintf("\t\t%s: mock%s,\n", iField.Name, iField.Name))
-	}
-	code.WriteString("\t}\n\n")
+	data.Args = append(data.Args, method.Args...)
 
-	if len(method.Args) > 0 {
-		code.WriteString("\tvar (\n")
-		for _, arg := range method.Args {
-			code.WriteString(fmt.Sprintf("\t\ttest%s %s\n", arg.Name, arg.Type))
-		}
-		code.WriteString("\t)\n\n")
+	for range method.LenResults {
+		data.Results = append(data.Results, struct{}{})
 	}
 
-	// Run testing function
-	code.WriteString("\t")
-	for i := range method.LenResults {
-		if i < method.LenResults-1 {
-			code.WriteString("_, ")
-		} else {
-			code.WriteString("_ = ")
-		}
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		log.Fatal(err)
 	}
-	code.WriteString(fmt.Sprintf("%s.%s(", structVarName, method.Name))
-	for _, arg := range method.Args {
-		code.WriteString(fmt.Sprintf("test%s, ", arg.Name))
-	}
-	code.WriteString(")\n")
 
-	code.WriteString("}\n")
-
-	return code.String()
+	return buf.String()
 }
 
 func generateTableTestForMethod(method model.Method) string {
+	tmplStr := tmpl.TmplTableTestForMethod
+
+	t, err := template.New("TmplTableTestForMethod").Funcs(template.FuncMap{
+		tmpl.FuncName: tmpl.Sub1,
+	}).Parse(tmplStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	s := method.Struct
-	testFuncName := fmt.Sprintf("Test%s_%s", s.Name, method.Name)
+	structVar := strings.ToLower(string(s.Name[0]))
 
-	var code strings.Builder
-	code.WriteString(fmt.Sprintf("func %s(t *testing.T) {\n", testFuncName))
-
-	code.WriteString("\ttests := []struct {\n")
-	code.WriteString("\t\tname\tstring\n")
-	for _, arg := range method.Args {
-		code.WriteString(fmt.Sprintf("\t\t%s\t%s\n", arg.Name, arg.Type))
+	data := tmpl.DataForMethod{
+		StructName:   s.Name,
+		MethodName:   method.Name,
+		StructVar:    structVar,
+		ArgsCount:    len(method.Args),
+		ResultsCount: method.LenResults,
+		HasMocks:     len(s.IFields) > 0,
+		HasResults:   method.LenResults > 0,
 	}
 
-	if len(s.IFields) > 0 {
-		code.WriteString("\t\tsetupMock\tfunc(t *testing.T, ctrl *gomock.Controller, ")
-		for _, iField := range s.IFields {
-			code.WriteString(fmt.Sprintf("%s *Mock%s, ", iField.Name, iField.Type))
-		}
-		code.WriteString(")\n")
-	}
-	code.WriteString("\t}{}\n")
-	code.WriteString("\tfor _, tt := range tests {\n")
-	code.WriteString("\t\tt.Run(tt.name, func(t *testing.T) {\n")
-	if len(s.IFields) > 0 {
-		code.WriteString("\t\t\tctrl := gomock.NewController(t)\n")
+	data.Mocks = append(data.Mocks, s.IFields...)
 
-		code.WriteString("\n")
+	data.Args = append(data.Args, method.Args...)
 
-		for _, iField := range s.IFields {
-			code.WriteString(fmt.Sprintf("\t\t\tmock%s := NewMock%s(ctrl)\n", iField.Name, iField.Type))
-		}
-		code.WriteString("\n")
-
-		code.WriteString("\t\t\ttt.setupMock(t, ctrl, ")
-		for _, iField := range s.IFields {
-			code.WriteString(fmt.Sprintf("mock%s, ", iField.Name))
-		}
-		code.WriteString(")\n\n")
+	for range method.LenResults {
+		data.Results = append(data.Results, struct{}{})
 	}
 
-	structVarName := strings.ToLower(string(s.Name[0]))
-
-	code.WriteString(fmt.Sprintf("\t\t\t%s := &%s{\n", structVarName, s.Name))
-	for _, iField := range s.IFields {
-		code.WriteString(fmt.Sprintf("\t\t\t\t%s: mock%s,\n", iField.Name, iField.Name))
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		log.Fatal(err)
 	}
-	code.WriteString("\t\t\t}\n\n")
 
-	// Run testing function
-	code.WriteString("\t\t\t")
-	for i := range method.LenResults {
-		if i < method.LenResults-1 {
-			code.WriteString("_, ")
-		} else {
-			code.WriteString("_ = ")
-		}
-	}
-	code.WriteString(fmt.Sprintf("%s.%s(", structVarName, method.Name))
-	for _, arg := range method.Args {
-		code.WriteString(fmt.Sprintf("tt.%s, ", arg.Name))
-	}
-	code.WriteString(")\n")
-
-	code.WriteString("\t\t})\n")
-
-	code.WriteString("\t}\n")
-
-	code.WriteString("}\n")
-
-	return code.String()
+	return buf.String()
 }

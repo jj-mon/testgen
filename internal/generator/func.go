@@ -1,80 +1,72 @@
 package generator
 
 import (
-	"fmt"
+	"bytes"
+	"log"
+	"text/template"
 
 	"github.com/jj-mon/testgen/internal/model"
+	"github.com/jj-mon/testgen/internal/tmpl"
 )
 
 func generateSimpleTestForFunc(fn model.Func) string {
-	testFuncName := fmt.Sprintf("Test%s", fn.Name)
+	tmplStr := tmpl.TmplTableTestForFunc
 
-	code := fmt.Sprintf("func %s(t *testing.T) {\n", testFuncName)
-
-	if len(fn.Args) > 0 {
-		code += "\tvar (\n"
-		for _, arg := range fn.Args {
-			code += fmt.Sprintf("\t\ttest%s %s\n", arg.Name, arg.Type)
-		}
-		code += "\t)\n\n"
+	t, err := template.New("TmplTableTestForFunc").Funcs(template.FuncMap{
+		tmpl.FuncName: tmpl.Sub1,
+	}).Parse(tmplStr)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	// Run testing function
-	code += "\t"
-	for i := range fn.LenResults {
-		if i < fn.LenResults-1 {
-			code += "_, "
-		} else {
-			code += "_ = "
-		}
+	data := tmpl.DataForFunc{
+		FuncName:     fn.Name,
+		ArgsCount:    len(fn.Args),
+		ResultsCount: fn.LenResults,
+		HasResults:   fn.LenResults > 0,
 	}
-	code += fmt.Sprintf("%s(", fn.Name)
-	for _, arg := range fn.Args {
-		code += fmt.Sprintf("test%s, ", arg.Name)
+
+	data.Args = append(data.Args, fn.Args...)
+
+	for range fn.LenResults {
+		data.Results = append(data.Results, struct{}{})
 	}
-	code += ")\n"
 
-	code += "}\n"
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		log.Fatal(err)
+	}
 
-	return code
+	return buf.String()
 }
 
 func generateTableTestForFunc(fn model.Func) string {
-	testFuncName := fmt.Sprintf("Test%s", fn.Name)
+	tmplStr := tmpl.TmplTableTestForFunc
 
-	code := fmt.Sprintf("func %s(t *testing.T) {\n", testFuncName)
-
-	code += "\ttests := []struct {\n"
-	code += "\t\tname\tstring\n"
-	for _, arg := range fn.Args {
-		code += fmt.Sprintf("\t\t%s\t%s\n", arg.Name, arg.Type)
+	t, err := template.New("TmplTableTestForFunc").Funcs(template.FuncMap{
+		tmpl.FuncName: tmpl.Sub1,
+	}).Parse(tmplStr)
+	if err != nil {
+		log.Fatal(err)
 	}
-	code += "\t}{}\n"
-	code += "\tfor _, tt := range tests {\n"
-	code += "\t\tt.Run(tt.name, func(t *testing.T) {\n"
 
-	code += "\n"
-
-	// Run testing function
-	code += "\t\t\t"
-	for i := range fn.LenResults {
-		if i < fn.LenResults-1 {
-			code += "_, "
-		} else {
-			code += "_ = "
-		}
+	data := tmpl.DataForFunc{
+		FuncName:     fn.Name,
+		ArgsCount:    len(fn.Args),
+		ResultsCount: fn.LenResults,
+		HasResults:   fn.LenResults > 0,
 	}
-	code += fmt.Sprintf("%s(", fn.Name)
-	for _, arg := range fn.Args {
-		code += fmt.Sprintf("tt.%s, ", arg.Name)
+
+	data.Args = append(data.Args, fn.Args...)
+
+	for range fn.LenResults {
+		data.Results = append(data.Results, struct{}{})
 	}
-	code += ")\n"
 
-	code += "\t\t})\n"
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		log.Fatal(err)
+	}
 
-	code += "\t}\n"
-
-	code += "}\n"
-
-	return code
+	return buf.String()
 }
