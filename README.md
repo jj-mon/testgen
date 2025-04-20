@@ -6,11 +6,11 @@ TestGen is a command-line utility written in Go that automatically generates tes
 
 - Automatically generates test file (`*_test.go`) for a given Go source file
 
-- Creates test function templates for all __exported functions and methods__ found in the file
+- Creates test function templates for all __exported__ functions and methods found in the file
 
 - Determines the appropriate test structure based on the complexity of the function:
     - For simple logic: generates a basic test function
-    - For functions with multiple branches: generates a table-driven test function
+    - For functions with complex branching logic: generates a table-driven test function
 
 - When generating tests for methods of a struct, it analyzes the struct’s fields:
     - For any field that is of interface usertype, it automatically generates field initialization by mock
